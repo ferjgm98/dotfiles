@@ -24,9 +24,13 @@ fi
 # Install Xcode Command Line Tools if not present
 if ! xcode-select -p &> /dev/null; then
     info "Installing Xcode Command Line Tools..."
-    xcode-select --install
-    echo "Press any key after Xcode CLT installation completes..."
-    read -n 1
+    xcode-select --install || true
+    if [[ -t 0 ]]; then
+        warn "Finish the Xcode CLT installer dialog, then press any key to continue..."
+        read -n 1
+    else
+        error "Xcode CLT install requires interaction. Please complete it, then re-run this script."
+    fi
 fi
 
 # Install Homebrew if not present
@@ -34,9 +38,11 @@ if ! command -v brew &> /dev/null; then
     info "Installing Homebrew..."
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     
-    # Add brew to PATH for Apple Silicon
-    if [[ -f "/opt/homebrew/bin/brew" ]]; then
+    # Add brew to PATH (Apple Silicon or Intel)
+    if [[ -x "/opt/homebrew/bin/brew" ]]; then
         eval "$(/opt/homebrew/bin/brew shellenv)"
+    elif [[ -x "/usr/local/bin/brew" ]]; then
+        eval "$(/usr/local/bin/brew shellenv)"
     fi
 fi
 
@@ -47,7 +53,15 @@ brew bundle install --file="$DOTFILES_DIR/Brewfile" --no-lock || warn "Some pack
 # Set zsh as default shell
 if [[ "$SHELL" != */zsh ]]; then
     info "Setting zsh as default shell..."
-    chsh -s "$(which zsh)"
+    ZSH_BIN="$(command -v zsh)"
+    if [[ -z "$ZSH_BIN" ]]; then
+        error "zsh not found"
+    fi
+    if ! grep -qxF "$ZSH_BIN" /etc/shells; then
+        warn "$ZSH_BIN not in /etc/shells; adding (requires sudo)..."
+        echo "$ZSH_BIN" | sudo tee -a /etc/shells >/dev/null
+    fi
+    chsh -s "$ZSH_BIN"
 fi
 
 # Create necessary directories

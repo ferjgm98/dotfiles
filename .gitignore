@@ -1,0 +1,8 @@
+.DS_Store
+**/.DS_Store
+
+# Local state / caches that shouldn't be committed
+**/.zcompdump*
+
+# Extras capture output (still versioned, but keep OS junk out)
+extras/**/.DS_Store

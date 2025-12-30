@@ -43,7 +43,11 @@ if [[ -n "$CURSOR_AGENT" || -n "$CLAUDECODE" || "$TERM_PROGRAM" == "cursor" ]]; 
   # Essential PATH additions only
   if [[ "$OS" == "macos" ]]; then
     export PNPM_HOME="$HOME/Library/pnpm"
-    export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:$PATH"
+    if [[ -d "/opt/homebrew/bin" ]]; then
+      export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:$PATH"
+    else
+      export PATH="/usr/local/bin:/usr/local/sbin:$PATH"
+    fi
   else
     export PNPM_HOME="$HOME/.local/share/pnpm"
   fi
@@ -62,12 +66,14 @@ export BUN_INSTALL="$HOME/.bun"
 if [[ "$OS" == "macos" ]]; then
   export PNPM_HOME="$HOME/Library/pnpm"
   path=(
-    /opt/homebrew/bin
-    /opt/homebrew/sbin
-    /opt/homebrew/opt/php@8.0/bin
-    /opt/homebrew/opt/php@8.0/sbin
-    /opt/homebrew/opt/postgresql@15/bin
-    /opt/homebrew/opt/openjdk@17/bin
+    /opt/homebrew/bin(N-/)
+    /opt/homebrew/sbin(N-/)
+    /usr/local/bin(N-/)
+    /usr/local/sbin(N-/)
+    /opt/homebrew/opt/php@8.0/bin(N-/)
+    /opt/homebrew/opt/php@8.0/sbin(N-/)
+    /opt/homebrew/opt/postgresql@15/bin(N-/)
+    /opt/homebrew/opt/openjdk@17/bin(N-/)
     "$HOME/.local/bin"
     "$PNPM_HOME"
     "$BUN_INSTALL/bin"
@@ -76,7 +82,9 @@ if [[ "$OS" == "macos" ]]; then
     "$HOME/.antigravity/antigravity/bin"
     $path
   )
-  export CPPFLAGS="-I/opt/homebrew/opt/openjdk@17/include"
+  if [[ -d "/opt/homebrew/opt/openjdk@17/include" ]]; then
+    export CPPFLAGS="-I/opt/homebrew/opt/openjdk@17/include"
+  fi
 else
   # Linux (Arch)
   export PNPM_HOME="$HOME/.local/share/pnpm"
@@ -164,12 +172,13 @@ fi
 export ZSH_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/oh-my-zsh"
 mkdir -p "$ZSH_CACHE_DIR/completions" 2>/dev/null || true
 
-# Completion system
-autoload -Uz compinit
-compinit -i -d "${ZDOTDIR:-$HOME}/.zcompdump"
-
 # Load plugins
-antidote load "${ZDOTDIR:-$HOME}/.zsh_plugins.txt"
+if (( $+commands[antidote] )); then
+  antidote load "${ZDOTDIR:-$HOME}/.zsh_plugins.txt"
+fi
+
+# Completion system (after plugins add completions)
+autoload -Uz compinit
 compinit -i -d "${ZDOTDIR:-$HOME}/.zcompdump"
 
 # Tool init (guarded)
@@ -182,10 +191,10 @@ compinit -i -d "${ZDOTDIR:-$HOME}/.zcompdump"
 # OS-specific extras
 if [[ "$OS" == "macos" ]]; then
   [[ -f "$HOME/.local/bin/env" ]] && . "$HOME/.local/bin/env"
-  [ -s "/Users/ferjgm98/.bun/_bun" ] && source "/Users/ferjgm98/.bun/_bun"
+  [[ -s "$HOME/.bun/_bun" ]] && source "$HOME/.bun/_bun"
   
   autoload -U +X bashcompinit && bashcompinit
-  complete -o nospace -C /opt/homebrew/bin/terraform terraform
+  [[ -x "/opt/homebrew/bin/terraform" ]] && complete -o nospace -C /opt/homebrew/bin/terraform terraform
   
   [[ "$TERM_PROGRAM" == "kiro" ]] && . "$(kiro --locate-shell-integration-path zsh)"
   
@@ -198,10 +207,12 @@ fi
 
 # Custom functions (work on both)
 kimicc() {
+  (( $+commands[op] )) || { echo 'op not found' >&2; return 1; }
   env ANTHROPIC_AUTH_TOKEN="$(op read 'op://Private/ENV_KIMI_API_KEY/password' 2>/dev/null)" ANTHROPIC_BASE_URL="https://api.moonshot.ai/anthropic" ANTHROPIC_MODEL= claude "$@"
 }
 
 qwen() {
+  (( $+commands[op] )) || { echo 'op not found' >&2; return 1; }
   env OPENAI_API_KEY="$(op read 'op://Private/ENV_DASHSCOPE_COMPAT_API_KEY/password' 2>/dev/null)" \
       OPENAI_BASE_URL="https://dashscope-intl.aliyuncs.com/compatible-mode/v1" \
       OPENAI_MODEL="qwen3-coder-plus" \
@@ -209,6 +220,7 @@ qwen() {
 }
 
 zai() {
+  (( $+commands[op] )) || { echo 'op not found' >&2; return 1; }
   env ANTHROPIC_AUTH_TOKEN="$(op read 'op://Private/ENV_ZAI_API_KEY/password' 2>/dev/null)" ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic" ANTHROPIC_DEFAULT_HAIKU_MODEL="glm-4.5-air" ANTHROPIC_DEFAULT_SONNET_MODEL="glm-4.6" ANTHROPIC_DEFAULT_OPUS_MODEL="glm-4.6" claude "$@"
 }
 

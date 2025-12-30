@@ -21,13 +21,27 @@ if ! command -v pacman &> /dev/null; then
     error "This script is intended for Arch Linux (pacman not found)"
 fi
 
+# Pick an AUR helper (Omarchy often ships with paru)
+if command -v yay &> /dev/null; then
+    AUR_HELPER="yay"
+elif command -v paru &> /dev/null; then
+    AUR_HELPER="paru"
+else
+    AUR_HELPER=""
+fi
+
 # Install yay if not present
-if ! command -v yay &> /dev/null; then
+if [[ -z "${AUR_HELPER}" ]]; then
     info "Installing yay (AUR helper)..."
     sudo pacman -S --needed --noconfirm git base-devel
-    git clone https://aur.archlinux.org/yay.git /tmp/yay
-    (cd /tmp/yay && makepkg -si --noconfirm)
-    rm -rf /tmp/yay
+    YAY_TMP="$(mktemp -d)"
+    cleanup() { rm -rf "$YAY_TMP"; }
+    trap cleanup EXIT
+    git clone https://aur.archlinux.org/yay.git "$YAY_TMP/yay"
+    (cd "$YAY_TMP/yay" && makepkg -si --noconfirm)
+    trap - EXIT
+    cleanup
+    AUR_HELPER="yay"
 fi
 
 # Install packages
@@ -59,7 +73,7 @@ sudo pacman -S --needed --noconfirm \
     bc
 
 info "Installing packages from AUR..."
-yay -S --needed --noconfirm \
+"$AUR_HELPER" -S --needed --noconfirm \
     fnm-bin \
     zsh-antidote \
     1password-cli \
@@ -68,7 +82,15 @@ yay -S --needed --noconfirm \
 # Set zsh as default shell
 if [[ "$SHELL" != */zsh ]]; then
     info "Setting zsh as default shell..."
-    chsh -s "$(which zsh)"
+    ZSH_BIN="$(command -v zsh)"
+    if [[ -z "$ZSH_BIN" ]]; then
+        error "zsh not found"
+    fi
+    if ! grep -qxF "$ZSH_BIN" /etc/shells; then
+        warn "$ZSH_BIN not in /etc/shells; adding (requires sudo)..."
+        echo "$ZSH_BIN" | sudo tee -a /etc/shells >/dev/null
+    fi
+    chsh -s "$ZSH_BIN"
 fi
 
 # Create necessary directories
