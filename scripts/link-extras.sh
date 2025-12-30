@@ -8,6 +8,26 @@ DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 info() { printf "[INFO] %s\n" "$1"; }
 warn() { printf "[WARN] %s\n" "$1" >&2; }
+die() { printf "[ERROR] %s\n" "$1" >&2; exit 1; }
+
+usage() {
+  cat <<'EOF'
+Usage: link-extras.sh [--no-desktop]
+
+Options:
+  --no-desktop  Skip linking desktop/WM configs (hypr/waybar/rofi/swaync/dunst).
+                Recommended on Omarchy unless extras were captured from that same Omarchy install.
+EOF
+}
+
+NO_DESKTOP=0
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --no-desktop) NO_DESKTOP=1; shift ;;
+    -h|--help) usage; exit 0 ;;
+    *) die "Unknown argument: $1 (use --help)" ;;
+  esac
+done
 
 backup_and_link() {
   local src="$1"
@@ -62,11 +82,15 @@ backup_and_link "$DOTFILES_DIR/extras/config/fd" "$HOME/.config/fd"
 backup_and_link "$DOTFILES_DIR/extras/config/ripgrep" "$HOME/.config/ripgrep"
 
 # Arch/Omarchy-ish (will just skip on macOS if not captured)
-backup_and_link "$DOTFILES_DIR/extras/config/hypr" "$HOME/.config/hypr"
-backup_and_link "$DOTFILES_DIR/extras/config/waybar" "$HOME/.config/waybar"
-backup_and_link "$DOTFILES_DIR/extras/config/rofi" "$HOME/.config/rofi"
-backup_and_link "$DOTFILES_DIR/extras/config/swaync" "$HOME/.config/swaync"
-backup_and_link "$DOTFILES_DIR/extras/config/dunst" "$HOME/.config/dunst"
+if [[ "$NO_DESKTOP" -eq 1 ]]; then
+  info "Skipping desktop/WM configs (--no-desktop)"
+else
+  backup_and_link "$DOTFILES_DIR/extras/config/hypr" "$HOME/.config/hypr"
+  backup_and_link "$DOTFILES_DIR/extras/config/waybar" "$HOME/.config/waybar"
+  backup_and_link "$DOTFILES_DIR/extras/config/rofi" "$HOME/.config/rofi"
+  backup_and_link "$DOTFILES_DIR/extras/config/swaync" "$HOME/.config/swaync"
+  backup_and_link "$DOTFILES_DIR/extras/config/dunst" "$HOME/.config/dunst"
+fi
 
 info "Done!"
 

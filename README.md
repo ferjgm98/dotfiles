@@ -83,6 +83,12 @@ chmod +x ~/dotfiles/scripts/link-extras.sh
 ~/dotfiles/scripts/link-extras.sh
 ```
 
+On **Omarchy**, it’s usually safer to restore just terminal/CLI extras (Warp/Ghostty/etc) and avoid overwriting the desktop stack unless you know your `extras/` are compatible:
+
+```bash
+~/dotfiles/scripts/link-extras.sh --no-desktop
+```
+
 ## What NOT to commit
 
 Avoid committing anything that can compromise accounts or machines:
