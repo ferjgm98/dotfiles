@@ -100,38 +100,8 @@ mkdir -p ~/.local/bin
 mkdir -p ~/.local/share/pnpm
 mkdir -p ~/.cache/oh-my-zsh/completions
 
-# Symlink dotfiles
-info "Creating symlinks..."
-
-# Backup existing files
-backup_if_exists() {
-    if [[ -e "$1" && ! -L "$1" ]]; then
-        warn "Backing up existing $1 to $1.bak"
-        mv "$1" "$1.bak.$(date +%Y%m%d%H%M%S)"
-    fi
-}
-
-# Zsh
-backup_if_exists ~/.zshrc
-backup_if_exists ~/.zsh_plugins.txt
-ln -sf "$DOTFILES_DIR/zsh/.zshrc" ~/.zshrc
-ln -sf "$DOTFILES_DIR/zsh/.zsh_plugins.txt" ~/.zsh_plugins.txt
-
-# Tmux
-backup_if_exists ~/.tmux.conf
-ln -sf "$DOTFILES_DIR/tmux/.tmux.conf" ~/.tmux.conf
-
-# Git
-backup_if_exists ~/.gitconfig
-ln -sf "$DOTFILES_DIR/.gitconfig" ~/.gitconfig
-
-# Starship
-backup_if_exists ~/.config/starship.toml
-ln -sf "$DOTFILES_DIR/starship/starship.toml" ~/.config/starship.toml
-
-# Neovim
-backup_if_exists ~/.config/nvim
-ln -sf "$DOTFILES_DIR/nvim/nvim" ~/.config/nvim
+# Use the same backup and linking rules as a manual install.
+bash "$DOTFILES_DIR/scripts/link.sh"
 
 # Install tmux plugin manager
 if [[ ! -d ~/.tmux/plugins/tpm ]]; then

@@ -51,13 +51,17 @@ confirm_overwrite() {
   if [[ "$FORCE" -eq 1 || "$DRY_RUN" -eq 1 ]]; then
     return 0
   fi
-  if [[ -e "$dest" && -t 0 ]]; then
+  if [[ ! -e "$dest" && ! -L "$dest" ]]; then
+    return 0
+  fi
+  if [[ -t 0 ]]; then
     warn "Destination exists: $dest"
     printf "Overwrite? [y/N] "
     read -r ans
     [[ "$ans" == "y" || "$ans" == "Y" ]]
   else
-    return 0
+    warn "Use --force to overwrite existing files without a terminal: $dest"
+    return 1
   fi
 }
 
@@ -70,16 +74,24 @@ copy_file() {
     return 0
   fi
 
+  if [[ "$src" -ef "$dest" ]]; then
+    info "Already captured: $src"
+    return 0
+  fi
+  if [[ -L "$dest" ]]; then
+    warn "Destination is a symlink (skipping): $dest"
+    return 0
+  fi
   if [[ -e "$dest" ]]; then
     confirm_overwrite "$dest" || { warn "Skipping (kept existing): $dest"; return 0; }
   fi
 
-  mkdir -p "$(dirname "$dest")"
   info "Copying file: $src -> $dest"
   if [[ "$DRY_RUN" -eq 1 ]]; then
     return 0
   fi
-  cp -a "$src" "$dest"
+  mkdir -p "$(dirname "$dest")"
+  cp -pL "$src" "$dest"
 }
 
 copy_dir() {
@@ -91,15 +103,26 @@ copy_dir() {
     return 0
   fi
 
-  mkdir -p "$(dirname "$dest")"
+  if [[ "$src" -ef "$dest" ]]; then
+    info "Already captured: $src"
+    return 0
+  fi
+  if [[ -L "$dest" ]]; then
+    warn "Destination is a symlink (skipping): $dest"
+    return 0
+  fi
+  confirm_overwrite "$dest" || { warn "Skipping (kept existing): $dest"; return 0; }
   info "Syncing dir: $src -> $dest"
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    return 0
+  fi
+  mkdir -p "$(dirname "$dest")"
 
   local -a rsync_args
-  rsync_args=(-a)
-  [[ "$DRY_RUN" -eq 1 ]] && rsync_args+=(-n)
+  rsync_args=(-a --safe-links)
   [[ "$RSYNC_DELETE" -eq 1 ]] && rsync_args+=(--delete)
 
-  # Excludes: never capture caches/secrets/state here (keep repos clean + safe)
+  # Omit generated state. Captured config contents still need review for secrets.
   rsync_args+=(
     --exclude ".git"
     --exclude ".DS_Store"
@@ -111,19 +134,19 @@ copy_dir() {
     --exclude ".pytest_cache"
     --exclude ".ruff_cache"
     --exclude ".cache"
-    --exclude "plugin"
-    --exclude "plugins"
   )
 
   rsync "${rsync_args[@]}" \
     "$src"/ "$dest"/
 }
 
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}"
+
 info "Capturing dotfiles into: $DOTFILES_DIR"
 
 # Shell
-copy_file "$HOME/.zshrc" "$DOTFILES_DIR/zsh/.zshrc"
-copy_file "$HOME/.zsh_plugins.txt" "$DOTFILES_DIR/zsh/.zsh_plugins.txt"
+copy_file "${ZDOTDIR:-$HOME}/.zshrc" "$DOTFILES_DIR/zsh/.zshrc"
+copy_file "${ZDOTDIR:-$HOME}/.zsh_plugins.txt" "$DOTFILES_DIR/zsh/.zsh_plugins.txt"
 
 # Tmux
 copy_file "$HOME/.tmux.conf" "$DOTFILES_DIR/tmux/.tmux.conf"
@@ -140,11 +163,10 @@ if [[ "$WITH_EXTRAS" -eq 1 ]]; then
   copy_file "$HOME/.ripgreprc" "$DOTFILES_DIR/extras/home/.ripgreprc"
   copy_file "$HOME/.editorconfig" "$DOTFILES_DIR/extras/home/.editorconfig"
   copy_file "$HOME/.tool-versions" "$DOTFILES_DIR/extras/home/.tool-versions"
-  copy_file "$HOME/.npmrc" "$DOTFILES_DIR/extras/home/.npmrc"
   copy_file "$HOME/.asdfrc" "$DOTFILES_DIR/extras/home/.asdfrc"
 
   # XDG configs (safe allowlist)
-  copy_dir "$HOME/.config/ghostty" "$DOTFILES_DIR/extras/config/ghostty"
+  copy_dir "$CONFIG_DIR/ghostty" "$DOTFILES_DIR/extras/config/ghostty"
   # Warp Terminal (keep minimal + portable: settings, themes, launch configs)
   copy_file "$HOME/.warp/settings.yaml" "$DOTFILES_DIR/extras/home/.warp/settings.yaml"
   copy_dir "$HOME/.warp/themes" "$DOTFILES_DIR/extras/home/.warp/themes"
@@ -154,27 +176,27 @@ if [[ "$WITH_EXTRAS" -eq 1 ]]; then
   XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
   copy_dir "$XDG_DATA_HOME/warp-terminal/launch_configurations" "$DOTFILES_DIR/extras/local/share/warp-terminal/launch_configurations"
 
-  copy_dir "$HOME/.config/kitty" "$DOTFILES_DIR/extras/config/kitty"
-  copy_dir "$HOME/.config/alacritty" "$DOTFILES_DIR/extras/config/alacritty"
-  copy_dir "$HOME/.config/wezterm" "$DOTFILES_DIR/extras/config/wezterm"
-  copy_dir "$HOME/.config/helix" "$DOTFILES_DIR/extras/config/helix"
-  copy_dir "$HOME/.config/bat" "$DOTFILES_DIR/extras/config/bat"
-  copy_dir "$HOME/.config/fd" "$DOTFILES_DIR/extras/config/fd"
-  copy_dir "$HOME/.config/ripgrep" "$DOTFILES_DIR/extras/config/ripgrep"
+  copy_dir "$CONFIG_DIR/kitty" "$DOTFILES_DIR/extras/config/kitty"
+  copy_dir "$CONFIG_DIR/alacritty" "$DOTFILES_DIR/extras/config/alacritty"
+  copy_dir "$CONFIG_DIR/wezterm" "$DOTFILES_DIR/extras/config/wezterm"
+  copy_dir "$CONFIG_DIR/helix" "$DOTFILES_DIR/extras/config/helix"
+  copy_dir "$CONFIG_DIR/bat" "$DOTFILES_DIR/extras/config/bat"
+  copy_dir "$CONFIG_DIR/fd" "$DOTFILES_DIR/extras/config/fd"
+  copy_dir "$CONFIG_DIR/ripgrep" "$DOTFILES_DIR/extras/config/ripgrep"
 
   # Arch/Omarchy-ish (if present; harmless on macOS)
-  copy_dir "$HOME/.config/hypr" "$DOTFILES_DIR/extras/config/hypr"
-  copy_dir "$HOME/.config/waybar" "$DOTFILES_DIR/extras/config/waybar"
-  copy_dir "$HOME/.config/rofi" "$DOTFILES_DIR/extras/config/rofi"
-  copy_dir "$HOME/.config/swaync" "$DOTFILES_DIR/extras/config/swaync"
-  copy_dir "$HOME/.config/dunst" "$DOTFILES_DIR/extras/config/dunst"
+  copy_dir "$CONFIG_DIR/hypr" "$DOTFILES_DIR/extras/config/hypr"
+  copy_dir "$CONFIG_DIR/waybar" "$DOTFILES_DIR/extras/config/waybar"
+  copy_dir "$CONFIG_DIR/rofi" "$DOTFILES_DIR/extras/config/rofi"
+  copy_dir "$CONFIG_DIR/swaync" "$DOTFILES_DIR/extras/config/swaync"
+  copy_dir "$CONFIG_DIR/dunst" "$DOTFILES_DIR/extras/config/dunst"
 fi
 
 # Starship
-copy_file "$HOME/.config/starship.toml" "$DOTFILES_DIR/starship/starship.toml"
+copy_file "$CONFIG_DIR/starship.toml" "$DOTFILES_DIR/starship/starship.toml"
 
 # Neovim (repo expects nested nvim/nvim)
-copy_dir "$HOME/.config/nvim" "$DOTFILES_DIR/nvim/nvim"
+copy_dir "$CONFIG_DIR/nvim" "$DOTFILES_DIR/nvim/nvim"
 
 info "Done. Review changes, then commit."
 

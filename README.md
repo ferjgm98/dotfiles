@@ -5,7 +5,7 @@ Cross-platform dotfiles for macOS and Arch Linux.
 ## What's included
 
 - **zsh** - Shell config with Antidote plugin manager, Starship prompt
-- **tmux** - Terminal multiplexer with Tokyo Night theme, sesh integration
+- **tmux** - Terminal multiplexer with Gruvbox theme, sesh integration
 - **neovim** - LazyVim configuration
 - **starship** - Cross-shell prompt with Nerd Font icons
 - **git** - Global git configuration
@@ -41,8 +41,34 @@ If you just want to symlink the configs without installing packages:
 
 ```bash
 chmod +x ~/dotfiles/scripts/link.sh
+~/dotfiles/scripts/link.sh --dry-run
 ~/dotfiles/scripts/link.sh
 ```
+
+Existing files, directories, and unrelated symlinks are moved to timestamped
+backups beside their original paths. Repeated runs leave correct links alone.
+Both bootstrap scripts use this same linker.
+
+Shell files respect `ZDOTDIR`; application configs respect `XDG_CONFIG_HOME`.
+The defaults are `~` and `~/.config`.
+
+## Check the setup
+
+```bash
+bash ~/dotfiles/scripts/doctor.sh
+bash ~/dotfiles/scripts/check.sh
+```
+
+`doctor.sh` reports config drift, broken links, and missing core tools without
+changing files. It exits with status 1 when something needs attention.
+`check.sh` checks shell syntax and runs regression tests in temporary directories.
+It requires Bash, Zsh, Python 3, and rsync.
+
+## Machine-specific shell settings
+
+Put local aliases, paths, and settings in `~/.zshrc.local`, or
+`$ZDOTDIR/.zshrc.local` when using `ZDOTDIR`. The repo shell config loads this
+file before the Kiro post hook. Keep credentials in 1Password.
 
 ## Backup your current ~/ setup into this repo (capture)
 
@@ -53,13 +79,23 @@ chmod +x ~/dotfiles/scripts/capture.sh
 ~/dotfiles/scripts/capture.sh
 ```
 
-By default, capture also collects a **curated allowlist** of extra, generally-safe configs into `extras/` (it will skip anything missing). This includes **Ghostty** (`~/.config/ghostty`) and **Warp** (minimal config from `~/.warp/`). You can preview with:
+By default, capture also collects an allowlist of extra configs into `extras/`
+and skips missing sources. This includes Ghostty and Warp settings. Review the
+contents before committing, since even terminal and shell configs can contain
+credentials. `.npmrc` is excluded because it can contain registry tokens.
+Preview the source and destination paths without changing files:
 
 ```bash
 ~/dotfiles/scripts/capture.sh --dry-run
 ```
 
-To mirror directories (destructive sync via `rsync --delete`), run:
+Existing files and directories require confirmation. Without a terminal,
+capture skips existing destinations unless you pass `--force`. Sources already
+linked to their repo destination are skipped. File symlinks are copied as
+contents; directory capture omits symlinks that point outside the copied tree.
+Neovim's `lua/plugins` definitions are included.
+
+To mirror directories, removing destination files absent from the source:
 
 ```bash
 ~/dotfiles/scripts/capture.sh --delete
@@ -88,6 +124,8 @@ On **Omarchy**, it’s usually safer to restore just terminal/CLI extras (Warp/G
 ```bash
 ~/dotfiles/scripts/link-extras.sh --no-desktop
 ```
+
+Add `--dry-run` to preview extra links without changing files.
 
 ## What NOT to commit
 

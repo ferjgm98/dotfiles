@@ -1,36 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Simple symlink script (for manual linking without full bootstrap)
-
 DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+DRY_RUN=0
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --dry-run) DRY_RUN=1 ;;
+    -h|--help) echo "Usage: link.sh [--dry-run]"; exit 0 ;;
+    *) printf 'Unknown argument: %s\n' "$1" >&2; exit 1 ;;
+  esac
+  shift
+done
 
-echo "Linking dotfiles from: $DOTFILES_DIR"
+source "$DOTFILES_DIR/scripts/link-common.sh"
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}"
 
-backup_and_link() {
-    local src="$1"
-    local dest="$2"
-    
-    if [[ -e "$dest" && ! -L "$dest" ]]; then
-        echo "Backing up $dest"
-        mv "$dest" "$dest.bak.$(date +%Y%m%d%H%M%S)"
-    fi
-    
-    if [[ -L "$dest" ]]; then
-        rm "$dest"
-    fi
-    
-    echo "Linking $src -> $dest"
-    ln -sf "$src" "$dest"
-}
-
-mkdir -p ~/.config
-
-backup_and_link "$DOTFILES_DIR/zsh/.zshrc" ~/.zshrc
-backup_and_link "$DOTFILES_DIR/zsh/.zsh_plugins.txt" ~/.zsh_plugins.txt
-backup_and_link "$DOTFILES_DIR/tmux/.tmux.conf" ~/.tmux.conf
-backup_and_link "$DOTFILES_DIR/.gitconfig" ~/.gitconfig
-backup_and_link "$DOTFILES_DIR/starship/starship.toml" ~/.config/starship.toml
-backup_and_link "$DOTFILES_DIR/nvim/nvim" ~/.config/nvim
-
-echo "Done!"
+backup_and_link "$DOTFILES_DIR/zsh/.zshrc" "${ZDOTDIR:-$HOME}/.zshrc"
+backup_and_link "$DOTFILES_DIR/zsh/.zsh_plugins.txt" "${ZDOTDIR:-$HOME}/.zsh_plugins.txt"
+backup_and_link "$DOTFILES_DIR/tmux/.tmux.conf" "$HOME/.tmux.conf"
+backup_and_link "$DOTFILES_DIR/.gitconfig" "$HOME/.gitconfig"
+backup_and_link "$DOTFILES_DIR/starship/starship.toml" "$CONFIG_DIR/starship.toml"
+backup_and_link "$DOTFILES_DIR/nvim/nvim" "$CONFIG_DIR/nvim"
