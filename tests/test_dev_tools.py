@@ -107,6 +107,7 @@ elif name == "curl":
             "#!/bin/sh\n"
             "[ ! -t 0 ] && [ ! -t 1 ] || exit 19\n"
             + ("[ \"$SHELL\" = /bin/sh ] || exit 20\n" if tool in ["grok", "agy"] else "")
+            + ('[ "${CODEX_NON_INTERACTIVE:-}" = 1 ] || exit 23\n' if tool == "codex" else "")
             + 'mkdir -p "$HOME/.local/bin"\n'
             + f"printf '#!/bin/sh\\nexit 0\\n' > \"$HOME/.local/bin/{tool}\"\n"
             + f'chmod +x "$HOME/.local/bin/{tool}"\n'
@@ -146,6 +147,14 @@ elif name == "curl":
         self.assertTrue((self.home / ".local/bin/muse").exists())
         self.assertTrue((self.home / ".local/bin/forge").exists())
         self.assertIn(["uv", ["tool", "install", "--python", "3.12", "mistral-vibe"], "/bin/zsh"], calls)
+
+    def test_codex_install_skips_launch_prompt_and_continues(self):
+        self.env["CODEX_NON_INTERACTIVE"] = "0"
+        result = self.run_installer()
+        self.assertEqual(result.returncode, 0)
+        self.assertTrue((self.home / ".local/bin/codex").exists())
+        self.assertTrue((self.home / ".local/bin/muse").exists())
+        self.assertIn("Developer tools installed", result.stdout)
 
     def test_second_run_does_not_reinstall_existing_tools(self):
         self.run_installer()

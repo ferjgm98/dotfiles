@@ -149,7 +149,8 @@ fi
 
 install_script claude bash https://claude.ai/install.sh
 install_forge
-install_script codex sh https://chatgpt.com/codex/install.sh
+# Codex reads prompts from /dev/tty even when stdin is redirected.
+CODEX_NON_INTERACTIVE=1 install_script codex sh https://chatgpt.com/codex/install.sh
 install_script pi sh https://pi.dev/install.sh
 install_script amp bash https://ampcode.com/install.sh
 install_script cursor-agent bash https://cursor.com/install
