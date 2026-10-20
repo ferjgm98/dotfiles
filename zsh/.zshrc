@@ -170,30 +170,24 @@ if (( $+functions[antidote] )); then
   unset __ANTIDOTE_OMZ_PATH
 fi
 
-# Completion (single compinit, after ALL fpath changes)
+# Completion paths must be ready before compinit scans them.
 export ZSH_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/oh-my-zsh"
 mkdir -p "$ZSH_CACHE_DIR/completions" 2>/dev/null || true
+typeset -U fpath
 fpath=("$ZSH_CACHE_DIR/completions" "$HOME/.grok/completions/zsh" $fpath)
 
-# Completion styling
-zstyle ':completion:*' menu select
-zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'  # case-insensitive matching
-zstyle ':completion:*:descriptions' format '[%d]'
-zstyle ':completion:*' group-name ''
-
-autoload -Uz compinit
-_compdump="${ZDOTDIR:-$HOME}/.zcompdump"
-if [[ ! -f $_compdump ]] || [[ -n $_compdump(#qN.mh+24) ]]; then
-  compinit -i -d $_compdump    # missing or older than 24h: full scan
-else
-  compinit -C -d $_compdump    # fresh dump: fast cached load
-fi
-unset _compdump
-
-# Load plugins
+# ez-compinit queues plugin compdef calls until the scan below.
 if (( $+functions[antidote] )); then
   antidote load "${ZDOTDIR:-$HOME}/.zsh_plugins.txt"
 fi
+autoload -Uz compinit
+compinit -i -d "${ZDOTDIR:-$HOME}/.zcompdump"
+
+# Keep these styles after plugins, which may set their own defaults.
+zstyle ':completion:*' menu select
+zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
+zstyle ':completion:*:descriptions' format '[%d]'
+zstyle ':completion:*' group-name ''
 
 # Keep emacs keybindings authoritative (OMZ vi-mode plugin switches keymaps)
 bindkey -e

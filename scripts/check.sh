@@ -2,7 +2,7 @@
 set -euo pipefail
 
 DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-for script in "$DOTFILES_DIR"/scripts/*.sh; do
+for script in "$DOTFILES_DIR"/scripts/*.sh "$DOTFILES_DIR"/tmux/scripts/*.sh; do
   bash -n "$script"
 done
 zsh -n "$DOTFILES_DIR/zsh/.zshrc"

@@ -3,7 +3,7 @@ return {
   {
     "ellisonleao/gruvbox.nvim",
     opts = {
-      contrast_dark = "hard", -- options: "hard", "medium", "soft"
+      contrast = "hard",
       italic = {
         strings = false,
         emphasis = true,

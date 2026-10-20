@@ -20,6 +20,7 @@ check_link() {
 check_link "$DOTFILES_DIR/zsh/.zshrc" "${ZDOTDIR:-$HOME}/.zshrc"
 check_link "$DOTFILES_DIR/zsh/.zsh_plugins.txt" "${ZDOTDIR:-$HOME}/.zsh_plugins.txt"
 check_link "$DOTFILES_DIR/tmux/.tmux.conf" "$HOME/.tmux.conf"
+check_link "$DOTFILES_DIR/tmux/scripts/git-status.sh" "$HOME/.tmux/scripts/git-status.sh"
 check_link "$DOTFILES_DIR/.gitconfig" "$HOME/.gitconfig"
 check_link "$DOTFILES_DIR/starship/starship.toml" "$CONFIG_DIR/starship.toml"
 check_link "$DOTFILES_DIR/nvim/nvim" "$CONFIG_DIR/nvim"

@@ -30,6 +30,7 @@ class ScriptTests(unittest.TestCase):
         shutil.copytree(REPO / "scripts", self.repo / "scripts")
         for name in [
             "zsh/.zshrc", "zsh/.zsh_plugins.txt", "tmux/.tmux.conf",
+            "tmux/scripts/git-status.sh",
             ".gitconfig", "starship/starship.toml", "nvim/nvim/init.lua",
         ]:
             path = self.repo / name
@@ -201,6 +202,114 @@ class ScriptTests(unittest.TestCase):
             env=env, capture_output=True, text=True, check=True,
         )
         self.assertEqual(result.stdout, "loaded")
+
+    def test_capture_reports_skipped_external_symlinks(self):
+        source = self.home / ".config/nvim"
+        source.mkdir(parents=True)
+        outside = self.root / "outside.lua"
+        outside.write_text("external")
+        (source / "settings.lua").symlink_to(outside)
+        dest = self.repo / "nvim/nvim/settings.lua"
+        dest.write_text("old")
+        result = self.run_script("capture.sh", "--force", "--delete", "--no-extras")
+        self.assertIn("settings.lua", result.stdout + result.stderr)
+        self.assertIn("unsafe symlink", result.stdout + result.stderr)
+        self.assertEqual(dest.read_text(), "old")
+
+    def prepare_bootstrap(self, bob_status=0):
+        bin_dir = self.root / "bin"
+        bin_dir.mkdir()
+        (self.home / ".tmux/plugins/tpm").mkdir(parents=True)
+        commands = {
+            "uname": "echo Darwin",
+            "xcode-select": "exit 0",
+            "brew": "exit 0",
+            "bun": "exit 0",
+            "pnpm": "exit 0",
+            "bob": (
+                'printf "%s\\n" "$*" >> "$TEST_LOG"\n'
+                f"exit {bob_status}"
+            ),
+        }
+        for name, body in commands.items():
+            command = bin_dir / name
+            command.write_text("#!/bin/sh\n" + body + "\n")
+            command.chmod(0o755)
+        # Keep an installed system Neovim from changing the fresh-machine fixture.
+        for name in ["bash", "dirname", "mkdir", "date", "mv", "ln"]:
+            (bin_dir / name).symlink_to(shutil.which(name))
+        self.env.update(
+            PATH=str(bin_dir),
+            SHELL="/bin/zsh",
+            TEST_LOG=str(self.root / "bob.log"),
+        )
+
+    def test_bootstrap_selects_neovim_on_fresh_mac(self):
+        self.prepare_bootstrap()
+        self.run_script("bootstrap-macos.sh")
+        self.assertEqual((self.root / "bob.log").read_text(), "use stable\n")
+
+    def test_bootstrap_preserves_existing_bob_neovim(self):
+        self.prepare_bootstrap()
+        nvim = self.home / ".local/share/bob/nvim-bin/nvim"
+        nvim.parent.mkdir(parents=True)
+        nvim.write_text("#!/bin/sh\nexit 0\n")
+        nvim.chmod(0o755)
+        self.run_script("bootstrap-macos.sh")
+        self.assertFalse((self.root / "bob.log").exists())
+
+    def test_bootstrap_stops_when_neovim_install_fails(self):
+        self.prepare_bootstrap(bob_status=7)
+        with self.assertRaises(subprocess.CalledProcessError) as error:
+            self.run_script("bootstrap-macos.sh")
+        self.assertEqual(error.exception.returncode, 7)
+        self.assertNotIn("Bootstrap complete!", error.exception.stdout)
+
+    def test_git_credentials_resolve_gh_through_path(self):
+        bin_dir = self.root / "custom prefix/bin"
+        bin_dir.mkdir(parents=True)
+        gh = bin_dir / "gh"
+        gh.write_text(
+            '#!/bin/sh\nprintf "%s\\n" "$*" > "$TEST_LOG"\n'
+            "printf 'username=test-user\\npassword=test-only\\n'\n"
+        )
+        gh.chmod(0o755)
+        env = dict(
+            self.env,
+            PATH=str(bin_dir) + ":/usr/bin:/bin",
+            TEST_LOG=str(self.root / "gh.log"),
+            GIT_CONFIG_GLOBAL=str(REPO / ".gitconfig"),
+            GIT_CONFIG_NOSYSTEM="1",
+            GIT_TERMINAL_PROMPT="0",
+        )
+        for host in ["github.com", "gist.github.com"]:
+            result = subprocess.run(
+                ["git", "credential", "fill"],
+                input=f"protocol=https\nhost={host}\n\n",
+                env=env, cwd=self.root, text=True, capture_output=True, check=True,
+            )
+            self.assertIn("username=test-user", result.stdout)
+            self.assertEqual((self.root / "gh.log").read_text(), "auth git-credential get\n")
+
+    def test_tmux_status_handles_git_directory_with_spaces(self):
+        project = self.root / "project with spaces"
+        project.mkdir()
+        env = dict(self.env, GIT_CONFIG_NOSYSTEM="1")
+        def git(*args):
+            subprocess.run(
+                ["git", *args], cwd=project, env=env,
+                capture_output=True, text=True, check=True,
+            )
+        git("init", "-b", "main")
+        git("-c", "user.name=Test", "-c", "user.email=test@example.invalid",
+            "commit", "--allow-empty", "-m", "Initial")
+        (project / "new.txt").write_text("new")
+        result = subprocess.run(
+            ["bash", str(REPO / "tmux/scripts/git-status.sh"), str(project)],
+            env=env, capture_output=True, text=True, check=True,
+        )
+        self.assertIn("main", result.stdout)
+        self.assertIn("~1", result.stdout)
 
 
 if __name__ == "__main__":

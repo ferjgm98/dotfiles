@@ -119,7 +119,7 @@ copy_dir() {
   mkdir -p "$(dirname "$dest")"
 
   local -a rsync_args
-  rsync_args=(-a --safe-links)
+  rsync_args=(-av --safe-links)
   [[ "$RSYNC_DELETE" -eq 1 ]] && rsync_args+=(--delete)
 
   # Omit generated state. Captured config contents still need review for secrets.
@@ -150,6 +150,7 @@ copy_file "${ZDOTDIR:-$HOME}/.zsh_plugins.txt" "$DOTFILES_DIR/zsh/.zsh_plugins.t
 
 # Tmux
 copy_file "$HOME/.tmux.conf" "$DOTFILES_DIR/tmux/.tmux.conf"
+copy_file "$HOME/.tmux/scripts/git-status.sh" "$DOTFILES_DIR/tmux/scripts/git-status.sh"
 
 # Git
 copy_file "$HOME/.gitconfig" "$DOTFILES_DIR/.gitconfig"

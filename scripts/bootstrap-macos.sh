@@ -50,6 +50,12 @@ fi
 info "Installing packages from Brewfile..."
 brew bundle install --file="$DOTFILES_DIR/Brewfile" || error "Package installation failed. Fix the errors above and rerun bootstrap."
 
+# Bob installs the manager; select Neovim only when it is not installed yet.
+if ! command -v nvim >/dev/null 2>&1 && [[ ! -x "$HOME/.local/share/bob/nvim-bin/nvim" ]]; then
+    info "Installing stable Neovim with Bob..."
+    bob use stable
+fi
+
 # Set zsh as default shell
 if [[ "$SHELL" != */zsh ]]; then
     info "Setting zsh as default shell..."

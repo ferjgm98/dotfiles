@@ -64,6 +64,12 @@ changing files. It exits with status 1 when something needs attention.
 `check.sh` checks shell syntax and runs regression tests in temporary directories.
 It requires Bash, Zsh, Python 3, and rsync.
 
+The offline plugin integration test also needs existing checkouts. Set
+`ANTIDOTE_TEST_SOURCE` to `antidote.zsh`, `ANTIDOTE_TEST_CACHE` to the directory
+containing the `owner/repo` plugin directories, and `EZ_COMPINIT_TEST_DIR` to the
+ez-compinit checkout. Without these paths, that test is skipped. The test checks
+both a fresh completion cache and a cached startup without downloading plugins.
+
 ## Machine-specific shell settings
 
 Put local aliases, paths, and settings in `~/.zshrc.local`, or
@@ -93,7 +99,9 @@ Existing files and directories require confirmation. Without a terminal,
 capture skips existing destinations unless you pass `--force`. Sources already
 linked to their repo destination are skipped. File symlinks are copied as
 contents; directory capture omits symlinks that point outside the copied tree.
-Neovim's `lua/plugins` definitions are included.
+Neovim's `lua/plugins` definitions are included. rsync reports skipped external
+symlinks. Even with `--delete`, an old destination file at a skipped link
+can remain; review those messages before treating the capture as a mirror.
 
 To mirror directories, removing destination files absent from the source:
 
@@ -106,6 +114,7 @@ This copies:
 - `~/.zshrc` → `zsh/.zshrc`
 - `~/.zsh_plugins.txt` → `zsh/.zsh_plugins.txt`
 - `~/.tmux.conf` → `tmux/.tmux.conf`
+- `~/.tmux/scripts/git-status.sh` → `tmux/scripts/git-status.sh`
 - `~/.gitconfig` → `.gitconfig`
 - `~/.config/starship.toml` → `starship/starship.toml`
 - `~/.config/nvim/` → `nvim/nvim/`
@@ -153,6 +162,14 @@ Avoid committing anything that can compromise accounts or machines:
 - pyenv (Python version manager)
 - 1password-cli (secrets management)
 - docker
+
+The macOS bootstrap selects stable Neovim with Bob when no Neovim installation
+is present. GitHub CLI is installed on both platforms, and Git resolves it through
+`PATH`. Python 3.9 is excluded from the Homebrew bundle; use pyenv if a project
+requires that legacy version.
+
+Zsh uses `mattmc3/ez-compinit` to queue plugin completion definitions until all
+plugin completion paths are loaded. Antidote downloads it on the next shell start.
 
 ## Post-install
 

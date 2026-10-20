@@ -52,6 +52,7 @@ sudo pacman -S --needed --noconfirm \
     neovim \
     git \
     git-lfs \
+    github-cli \
     base-devel \
     fzf \
     fd \

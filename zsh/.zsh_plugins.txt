@@ -1,6 +1,9 @@
 # Antidote plugin list
 # Keep zsh-syntax-highlighting last.
 
+# Queue compdef calls until every plugin has added its completion paths.
+mattmc3/ez-compinit
+
 # Oh My Zsh libs + plugins
 ohmyzsh/ohmyzsh path:lib
 ohmyzsh/ohmyzsh path:plugins/git
@@ -14,7 +17,7 @@ ohmyzsh/ohmyzsh path:plugins/vi-mode
 
 # Extra plugins
 psprint/zsh-navigation-tools
-zsh-users/zsh-completions
+zsh-users/zsh-completions kind:fpath path:src
 zsh-users/zsh-autosuggestions
 
 # Keep last
