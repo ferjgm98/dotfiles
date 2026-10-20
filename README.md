@@ -12,7 +12,8 @@ Cross-platform dotfiles for macOS and Arch Linux.
 - **neovim** - LazyVim configuration
 - **starship** - Cross-shell prompt with Nerd Font icons
 - **git** - Global git configuration
-- **Brewfile** - All Homebrew packages (macOS only)
+- **Developer tools** - Coding CLIs from `update_dependencies.sh`, plus Node and uv
+- **Brewfile** - Default Homebrew packages (macOS only)
 
 ## Quick start (macOS)
 
@@ -37,6 +38,70 @@ chmod +x ~/dotfiles/scripts/bootstrap-arch.sh
 ```
 
 Note: the Arch bootstrap will use your existing AUR helper if available (`yay` or `paru`). If neither is installed, it will install `yay`.
+
+## Developer tools
+
+Both platform bootstraps install the coding tools maintained by
+`~/update_dependencies.sh`. The shared installer skips existing native tools
+and installs npm tools into the selected fnm Node prefix. It uses your existing
+fnm default, or installs Node LTS and sets the default on a new machine. An old
+default below Node 22.19 stops with instructions to update it.
+
+```bash
+# Preview without downloads or installation:
+bash ~/dotfiles/scripts/install-dev-tools.sh --dry-run
+
+# Install missing tools after fnm and uv are available:
+bash ~/dotfiles/scripts/install-dev-tools.sh
+
+# Check executable availability without installing anything:
+bash ~/dotfiles/scripts/doctor.sh --with-dev-tools
+```
+
+The installed tools are:
+
+| Tools | Install source |
+| --- | --- |
+| Node.js and npm | [fnm](https://github.com/Schniz/fnm) default, with LTS on fresh machines |
+| Corepack and pnpm | Corepack in the fnm Node prefix, with pnpm activated when missing |
+| Bun | Official installer |
+| GitHub Copilot, Cline, Mastra Code | npm: `@github/copilot`, `cline`, `mastracode` |
+| Claude Code | [Claude native installer](https://code.claude.com/docs/en/setup) |
+| Forge | [Official release binary](https://github.com/tailcallhq/forgecode/releases/latest) |
+| Codex | [Standalone installer](https://developers.openai.com/codex/cli) |
+| Pi | [Managed installer](https://pi.dev/docs/latest/quickstart) |
+| Amp | [Official installer](https://ampcode.com/docs/cli) |
+| Cursor Agent | [Official CLI installer](https://cursor.com/docs/cli/installation) |
+| Devin | [Official CLI installer](https://docs.devin.ai/work-with-devin/devin-cli) |
+| Factory Droid | `https://app.factory.ai/cli` |
+| Kiro CLI | `https://cli.kiro.dev/install` |
+| Kimi Code | [Official installer](https://www.kimi.com/code/docs/en/kimi-code-cli/guides/getting-started) |
+| Mistral Vibe | `uv tool install --python 3.12 mistral-vibe` |
+| OpenCode | `https://opencode.ai/install` |
+| Grok | [Official installer](https://github.com/xai-org/grok-build) |
+| Antigravity CLI (`agy`) | [Official installer](https://www.antigravity.google/docs/cli/install/) |
+| Kiro Crew | [Official CLI installer](https://kiro.dev/docs/crew/) |
+| fx | [Official installer](https://fx.sh/) |
+| Muse Code | `https://dev.meta.ai/install.sh` |
+
+`uv` comes from Homebrew on macOS and pacman on Arch. Vibe gets an isolated
+Python 3.12 environment; Kiro Crew manages its own Python. The Forge release
+binary avoids the documented installer URL, which returned 404 when checked.
+
+Sign-ins, subscriptions, API keys, extensions, and existing sessions remain
+machine-local. Run `kiro-cli login` and `kirocrew setup` for Crew. Cursor Agent
+and Antigravity CLI do not install their desktop editors. The Kiro CLI installer
+also installs its macOS app bundle. Vendor installers may perform their own
+local setup; downloads are completed before scripts execute.
+
+An install failure stops the bootstrap with a nonzero status. Fix the reported
+error and rerun to finish the remaining tools. This is an installer, so it does
+not run the updater's blanket upgrades, `--force` npm installs, or the old Cline
+signature repair.
+
+To skip this step, pass `--skip-dev-tools` to either platform bootstrap. This
+keeps the existing lightweight Bun/pnpm setup and can be combined with
+`--with-tmux`.
 
 ## Terminal workflow
 
@@ -100,7 +165,8 @@ bash ~/dotfiles/scripts/check.sh
 
 `doctor.sh` reports config drift, broken links, and missing core tools without
 changing files. It exits with status 1 when something needs attention.
-Use `doctor.sh --with-tmux` to include the optional tmux checks.
+Use `doctor.sh --with-tmux` to include the optional tmux checks, or add
+`--with-dev-tools` to check coding tool availability.
 `check.sh` checks shell syntax and runs regression tests in temporary directories.
 It requires Bash, Zsh, Python 3, and rsync.
 
@@ -199,6 +265,7 @@ Avoid committing anything that can compromise accounts or machines:
 
 - zsh + antidote (plugin manager)
 - Ghostty + Herdr
+- Developer tools listed above, unless `--skip-dev-tools` is passed
 - cmux on macOS
 - neovim + lazy.nvim
 - starship (prompt)
@@ -232,7 +299,8 @@ plugin completion paths are loaded. Antidote downloads it on the next shell star
 2. **Terminals**: Open Ghostty or cmux and run `herdr`. If you opted into tmux,
    open tmux and press `prefix + I` to install its plugins.
 
-3. **Node.js**: `fnm install --lts`
+3. **Accounts**: Sign in to the coding tools you use. Node LTS is installed by
+   the developer-tool step when no fnm default exists.
 
 4. **Python**: `pyenv install 3.12`
 
@@ -267,6 +335,7 @@ dotfiles/
 ├── scripts/
 │   ├── bootstrap-arch.sh
 │   ├── bootstrap-macos.sh
+│   ├── install-dev-tools.sh
 │   └── link.sh
 ├── Brewfile            # Default Homebrew packages (macOS)
 ├── Brewfile.tmux       # Optional tmux and sesh

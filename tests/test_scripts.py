@@ -297,6 +297,9 @@ class ScriptTests(unittest.TestCase):
         self.assertEqual(dest.read_text(), "old")
 
     def prepare_bootstrap(self, bob_status=0):
+        (self.repo / "scripts/install-dev-tools.sh").write_text(
+            '#!/bin/bash\nprintf "installed" > "$DEV_LOG"\n'
+        )
         bin_dir = self.root / "bin"
         bin_dir.mkdir()
         (self.home / ".tmux/plugins/tpm").mkdir(parents=True)
@@ -323,6 +326,7 @@ class ScriptTests(unittest.TestCase):
             SHELL="/bin/zsh",
             TEST_LOG=str(self.root / "bob.log"),
             BREW_LOG=str(self.root / "brew.log"),
+            DEV_LOG=str(self.root / "dev-tools.log"),
         )
 
     def test_bootstrap_selects_neovim_on_fresh_mac(self):
@@ -337,6 +341,16 @@ class ScriptTests(unittest.TestCase):
         self.run_script("bootstrap-macos.sh", "--with-tmux")
         self.assertIn("Brewfile.tmux", (self.root / "brew.log").read_text())
         self.assertTrue((self.home / ".tmux.conf").is_symlink())
+
+    def test_bootstrap_installs_dev_tools_by_default(self):
+        self.prepare_bootstrap()
+        self.run_script("bootstrap-macos.sh")
+        self.assertEqual((self.root / "dev-tools.log").read_text(), "installed")
+
+    def test_bootstrap_can_skip_dev_tools(self):
+        self.prepare_bootstrap()
+        self.run_script("bootstrap-macos.sh", "--skip-dev-tools")
+        self.assertFalse((self.root / "dev-tools.log").exists())
 
     def test_bootstrap_preserves_existing_bob_neovim(self):
         self.prepare_bootstrap()

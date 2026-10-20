@@ -5,10 +5,12 @@ DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}"
 ISSUES=0
 WITH_TMUX=0
+WITH_DEV_TOOLS=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --with-dev-tools) WITH_DEV_TOOLS=1 ;;
     --with-tmux) WITH_TMUX=1 ;;
-    -h|--help) echo "Usage: doctor.sh [--with-tmux]"; exit 0 ;;
+    -h|--help) echo "Usage: doctor.sh [--with-tmux] [--with-dev-tools]"; exit 0 ;;
     *) printf 'Unknown argument: %s\n' "$1" >&2; exit 1 ;;
   esac
   shift
@@ -57,4 +59,7 @@ for tool in zsh git rsync herdr nvim starship fzf fd bat eza zoxide; do
     ISSUES=1
   fi
 done
+if [[ "$WITH_DEV_TOOLS" -eq 1 ]]; then
+  bash "$DOTFILES_DIR/scripts/install-dev-tools.sh" --check || ISSUES=1
+fi
 exit "$ISSUES"

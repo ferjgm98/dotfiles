@@ -14,10 +14,12 @@ error() { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
 DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 WITH_TMUX=0
+WITH_DEV_TOOLS=1
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        --skip-dev-tools) WITH_DEV_TOOLS=0 ;;
         --with-tmux) WITH_TMUX=1 ;;
-        -h|--help) echo "Usage: $(basename "$0") [--with-tmux]"; exit 0 ;;
+        -h|--help) echo "Usage: $(basename "$0") [--with-tmux] [--skip-dev-tools]"; exit 0 ;;
         *) error "Unknown argument: $1" ;;
     esac
     shift
@@ -47,7 +49,7 @@ fi
 if ! command -v brew &> /dev/null; then
     info "Installing Homebrew..."
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-    
+
     # Add brew to PATH (Apple Silicon or Intel)
     if [[ -x "/opt/homebrew/bin/brew" ]]; then
         eval "$(/opt/homebrew/bin/brew shellenv)"
@@ -103,16 +105,20 @@ if [[ "$WITH_TMUX" -eq 1 && ! -d ~/.tmux/plugins/tpm ]]; then
     git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
 fi
 
-# Install bun
-if ! command -v bun &> /dev/null; then
-    info "Installing bun..."
-    curl -fsSL https://bun.sh/install | bash
-fi
+if [[ "$WITH_DEV_TOOLS" -eq 1 ]]; then
+    bash "$DOTFILES_DIR/scripts/install-dev-tools.sh"
+else
+    # Install bun
+    if ! command -v bun &> /dev/null; then
+        info "Installing bun..."
+        curl -fsSL https://bun.sh/install | bash
+    fi
 
-# Install pnpm
-if ! command -v pnpm &> /dev/null; then
-    info "Installing pnpm..."
-    curl -fsSL https://get.pnpm.io/install.sh | sh -
+    # Install pnpm
+    if ! command -v pnpm &> /dev/null; then
+        info "Installing pnpm..."
+        curl -fsSL https://get.pnpm.io/install.sh | sh -
+    fi
 fi
 
 info "=========================================="
@@ -126,6 +132,6 @@ if [[ "$WITH_TMUX" -eq 1 ]]; then
     echo "     Optional tmux: press 'prefix + I' to install plugins"
 fi
 echo "  3. Open nvim - plugins will auto-install via lazy.nvim"
-echo "  4. Run 'fnm install --lts' to install Node.js"
+echo "  4. Sign in to the coding tools you use; project runtimes can be installed with fnm/pyenv"
 echo "  5. Run 'pyenv install 3.12' to install Python"
 echo ""

@@ -28,6 +28,7 @@ if [[ "$OS" == "macos" ]]; then
     "$HOME/.local/bin"
     "$HOME/.grok/bin"
     "$HOME/.local/share/bob/nvim-bin"
+    /Applications/Kiro\ CLI.app/Contents/MacOS(N-/)
     /Applications/cmux.app/Contents/Resources/bin(N-/)
     /Applications/Ghostty.app/Contents/MacOS(N-/)
     /opt/homebrew/bin(N-/)
@@ -57,6 +58,7 @@ else
     "$HOME/.local/bin"
     "$HOME/.grok/bin"
     "$HOME/.amp/bin"
+    "$HOME/.kimi-code/bin"
     "$PNPM_HOME"
     "$BUN_INSTALL/bin"
     "$HOME/.lmstudio/bin"
