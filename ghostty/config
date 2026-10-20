@@ -1,0 +1,8 @@
+theme = Gruvbox Dark Hard
+font-family = MonoLisaCode Nerd Font
+font-size = 14
+
+# Send the LEFT Option key as Alt so terminal apps (herdr) get real Alt chords.
+# Right Option still composes accents (á, é, ñ). Use "true" to make both Option
+# keys Alt (kills accent compose), or "false"/remove to restore default.
+macos-option-as-alt = left

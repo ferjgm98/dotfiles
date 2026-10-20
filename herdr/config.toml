@@ -1,0 +1,80 @@
+# Herdr settings, with keys shared with the optional tmux setup.
+# Reload after editing:  herdr server reload-config
+
+onboarding = false
+
+# Match nvim (ellisonleao/gruvbox.nvim, contrast = "hard") and
+# tmux (egel/tmux-gruvbox 'dark').
+[theme]
+name = "gruvbox"
+
+# Match the hard-contrast background in Neovim and Ghostty.
+[theme.custom]
+panel_bg = "#1d2021"
+
+[terminal]
+# Empty -> $SHELL (zsh). "auto" gives login shells on macOS.
+shell_mode = "auto"
+# New panes inherit the source pane's directory (like tmux default).
+new_cwd = "follow"
+
+[keys]
+prefix = "ctrl+a"
+
+# Bare Ctrl+H/J/K/L moves Herdr panes even inside Neovim. Ctrl+H also
+# replaces Backspace in terminals that send that chord. Remove the bare
+# chords to use prefix-only navigation and keep application bindings.
+focus_pane_left  = ["prefix+h", "ctrl+h"]
+focus_pane_down  = ["prefix+j", "ctrl+j"]
+focus_pane_up    = ["prefix+k", "ctrl+k"]
+focus_pane_right = ["prefix+l", "ctrl+l"]
+
+# Use prefix+v because the tmux vertical split chord is not reliable here.
+split_horizontal = "prefix+minus"   # stacked panes, like tmux `-`
+split_vertical   = "prefix+v"       # side-by-side, stands in for tmux `|`
+
+# Keep both Herdr and tmux zoom chords.
+zoom       = ["prefix+z", "prefix+m"]
+close_pane = "prefix+x"             # tmux `bind x kill-pane`
+
+# Tab bindings match tmux.
+new_tab      = "prefix+c"
+next_tab     = "prefix+n"
+previous_tab = "prefix+p"
+
+# Alt selects workspaces; Ctrl+Alt selects agents. Global app hotkeys can
+# intercept these chords before they reach the terminal.
+next_workspace     = "alt+j"
+previous_workspace = "alt+k"
+next_agent         = "ctrl+alt+j"
+previous_agent     = "ctrl+alt+k"
+
+# Open lazygit in a temporary pane.
+[[keys.command]]
+key = "prefix+alt+g"
+type = "pane"
+command = "lazygit"
+description = "open lazygit in a temporary pane"
+
+[ui]
+mouse_capture = true                # tmux `set -g mouse on`
+mouse_scroll_lines = 3
+confirm_close = true
+# Label panes by the detected agent.
+show_agent_labels_on_pane_borders = true
+agent_panel_scope = "all"
+accent = "#fabd2f"                  # gruvbox yellow, matches tmux status accent
+
+# Notifications for background agents.
+[ui.toast]
+delivery = "herdr"                  # in-app toasts when a background agent changes state
+delay_seconds = 1
+
+[ui.toast.herdr]
+position = "top-right"              # tmux status bar lives at the top, so toasts go top
+
+[ui.sound]
+enabled = true                      # audible cue when an agent finishes / needs input
+
+[session]
+resume_agents_on_restore = true     # restore agent conversations after a server restart

@@ -13,6 +13,16 @@ error() { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
 
 DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+WITH_TMUX=0
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --with-tmux) WITH_TMUX=1 ;;
+        -h|--help) echo "Usage: $(basename "$0") [--with-tmux]"; exit 0 ;;
+        *) error "Unknown argument: $1" ;;
+    esac
+    shift
+done
+
 info "Starting dotfiles bootstrap for macOS..."
 info "Dotfiles directory: $DOTFILES_DIR"
 
@@ -49,6 +59,9 @@ fi
 # Install packages from Brewfile
 info "Installing packages from Brewfile..."
 brew bundle install --file="$DOTFILES_DIR/Brewfile" || error "Package installation failed. Fix the errors above and rerun bootstrap."
+if [[ "$WITH_TMUX" -eq 1 ]]; then
+    brew bundle install --file="$DOTFILES_DIR/Brewfile.tmux"
+fi
 
 # Bob installs the manager; select Neovim only when it is not installed yet.
 if ! command -v nvim >/dev/null 2>&1 && [[ ! -x "$HOME/.local/share/bob/nvim-bin/nvim" ]]; then
@@ -78,10 +91,14 @@ mkdir -p ~/Library/pnpm
 mkdir -p ~/.cache/oh-my-zsh/completions
 
 # Use the same backup and linking rules as a manual install.
-bash "$DOTFILES_DIR/scripts/link.sh"
+if [[ "$WITH_TMUX" -eq 1 ]]; then
+    bash "$DOTFILES_DIR/scripts/link.sh" --with-tmux
+else
+    bash "$DOTFILES_DIR/scripts/link.sh"
+fi
 
 # Install tmux plugin manager
-if [[ ! -d ~/.tmux/plugins/tpm ]]; then
+if [[ "$WITH_TMUX" -eq 1 && ! -d ~/.tmux/plugins/tpm ]]; then
     info "Installing tmux plugin manager (TPM)..."
     git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
 fi
@@ -104,7 +121,10 @@ info "=========================================="
 echo ""
 info "Next steps:"
 echo "  1. Restart your terminal (or run: source ~/.zshrc)"
-echo "  2. Open tmux and press 'prefix + I' to install tmux plugins"
+echo "  2. Open Ghostty or cmux, then run herdr for persistent workspaces"
+if [[ "$WITH_TMUX" -eq 1 ]]; then
+    echo "     Optional tmux: press 'prefix + I' to install plugins"
+fi
 echo "  3. Open nvim - plugins will auto-install via lazy.nvim"
 echo "  4. Run 'fnm install --lts' to install Node.js"
 echo "  5. Run 'pyenv install 3.12' to install Python"

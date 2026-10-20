@@ -148,7 +148,20 @@ info "Capturing dotfiles into: $DOTFILES_DIR"
 copy_file "${ZDOTDIR:-$HOME}/.zshrc" "$DOTFILES_DIR/zsh/.zshrc"
 copy_file "${ZDOTDIR:-$HOME}/.zsh_plugins.txt" "$DOTFILES_DIR/zsh/.zsh_plugins.txt"
 
-# Tmux
+# Terminal settings only; sessions, sockets, and logs remain local.
+GHOSTTY_CONFIG="$CONFIG_DIR/ghostty/config"
+if [[ ! -f "$GHOSTTY_CONFIG" && "$(uname -s)" == Darwin ]]; then
+  GHOSTTY_CONFIG="$HOME/Library/Application Support/com.mitchellh.ghostty/config"
+fi
+copy_file "$GHOSTTY_CONFIG" "$DOTFILES_DIR/ghostty/config"
+copy_file "${HERDR_CONFIG_PATH:-$CONFIG_DIR/herdr/config.toml}" "$DOTFILES_DIR/herdr/config.toml"
+if [[ "$(uname -s)" == Darwin ]]; then
+  CMUX_CONFIG="$CONFIG_DIR/cmux/cmux.json"
+  [[ -f "$CMUX_CONFIG" ]] || CMUX_CONFIG="$CONFIG_DIR/cmux/settings.json"
+  copy_file "$CMUX_CONFIG" "$DOTFILES_DIR/cmux/cmux.json"
+fi
+
+# Tmux remains available as an optional fallback.
 copy_file "$HOME/.tmux.conf" "$DOTFILES_DIR/tmux/.tmux.conf"
 copy_file "$HOME/.tmux/scripts/git-status.sh" "$DOTFILES_DIR/tmux/scripts/git-status.sh"
 
@@ -167,7 +180,6 @@ if [[ "$WITH_EXTRAS" -eq 1 ]]; then
   copy_file "$HOME/.asdfrc" "$DOTFILES_DIR/extras/home/.asdfrc"
 
   # XDG configs (safe allowlist)
-  copy_dir "$CONFIG_DIR/ghostty" "$DOTFILES_DIR/extras/config/ghostty"
   # Warp Terminal (keep minimal + portable: settings, themes, launch configs)
   copy_file "$HOME/.warp/settings.yaml" "$DOTFILES_DIR/extras/home/.warp/settings.yaml"
   copy_dir "$HOME/.warp/themes" "$DOTFILES_DIR/extras/home/.warp/themes"

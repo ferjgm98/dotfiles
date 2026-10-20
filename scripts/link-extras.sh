@@ -62,7 +62,6 @@ link_optional "$DOTFILES_DIR/extras/local/share/warp-terminal/launch_configurati
 
 # XDG configs
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}"
-link_optional "$DOTFILES_DIR/extras/config/ghostty" "$CONFIG_DIR/ghostty"
 link_optional "$DOTFILES_DIR/extras/config/kitty" "$CONFIG_DIR/kitty"
 link_optional "$DOTFILES_DIR/extras/config/alacritty" "$CONFIG_DIR/alacritty"
 link_optional "$DOTFILES_DIR/extras/config/wezterm" "$CONFIG_DIR/wezterm"

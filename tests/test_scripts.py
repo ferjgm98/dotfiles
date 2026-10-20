@@ -31,6 +31,7 @@ class ScriptTests(unittest.TestCase):
         for name in [
             "zsh/.zshrc", "zsh/.zsh_plugins.txt", "tmux/.tmux.conf",
             "tmux/scripts/git-status.sh",
+            "ghostty/config", "cmux/cmux.json", "herdr/config.toml",
             ".gitconfig", "starship/starship.toml", "nvim/nvim/init.lua",
         ]:
             path = self.repo / name
@@ -59,12 +60,91 @@ class ScriptTests(unittest.TestCase):
         self.assertEqual(before, snapshot(self.root))
         self.assertFalse((self.repo / "nvim/nvim/nvim").is_symlink())
 
+    def test_default_links_terminals_and_preserves_tmux(self):
+        tmux = self.home / ".tmux.conf"
+        tmux.write_text("existing tmux")
+        self.run_script("link.sh")
+        for name in ["ghostty/config", "herdr/config.toml"]:
+            self.assertEqual(
+                (self.home / ".config" / name).resolve(),
+                (self.repo / name).resolve(),
+            )
+        self.assertEqual(tmux.read_text(), "existing tmux")
+        self.assertFalse(tmux.is_symlink())
+        self.assertFalse(list(self.home.glob(".tmux.conf.bak.*")))
+
+    def test_tmux_opt_in_is_repeatable(self):
+        self.run_script("link.sh", "--with-tmux")
+        self.assertTrue((self.home / ".tmux.conf").is_symlink())
+        self.assertTrue((self.home / ".tmux/scripts/git-status.sh").is_symlink())
+        before = snapshot(self.root)
+        self.run_script("link.sh", "--with-tmux")
+        self.assertEqual(before, snapshot(self.root))
+
+    def mock_platform(self, platform):
+        bin_dir = self.root / "platform-bin"
+        bin_dir.mkdir()
+        uname = bin_dir / "uname"
+        uname.write_text(f"#!/bin/sh\necho {platform}\n")
+        uname.chmod(0o755)
+        self.env["PATH"] = str(bin_dir) + ":" + self.env["PATH"]
+
+    def test_linux_links_skip_macos_configs(self):
+        self.mock_platform("Linux")
+        self.run_script("link.sh")
+        self.assertFalse((self.home / ".config/cmux").exists())
+        self.assertFalse((self.home / "Library").exists())
+        self.assertTrue((self.home / ".config/ghostty/config").is_symlink())
+
+    def test_capture_terminal_configs_omits_runtime_state(self):
+        self.mock_platform("Darwin")
+        for name in ["ghostty/config", "herdr/config.toml", "cmux/cmux.json"]:
+            path = self.home / ".config" / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("local " + name)
+        for name in ["herdr/session.json", "herdr/herdr-server.log", "cmux/session.json"]:
+            (self.home / ".config" / name).write_text("private state")
+        self.run_script("capture.sh", "--force", "--no-extras")
+        for name in ["ghostty/config", "herdr/config.toml", "cmux/cmux.json"]:
+            self.assertEqual((self.repo / name).read_text(), "local " + name)
+        self.assertEqual([p.name for p in (self.repo / "herdr").iterdir()], ["config.toml"])
+        self.assertEqual([p.name for p in (self.repo / "cmux").iterdir()], ["cmux.json"])
+
+    def test_capture_macos_terminal_fallbacks(self):
+        self.mock_platform("Darwin")
+        ghostty = self.home / "Library/Application Support/com.mitchellh.ghostty/config"
+        ghostty.parent.mkdir(parents=True)
+        ghostty.write_text("native Ghostty settings")
+        cmux = self.home / ".config/cmux/settings.json"
+        cmux.parent.mkdir(parents=True)
+        cmux.write_text("legacy cmux settings")
+        self.run_script("capture.sh", "--force", "--no-extras")
+        self.assertEqual((self.repo / "ghostty/config").read_text(), ghostty.read_text())
+        self.assertEqual((self.repo / "cmux/cmux.json").read_text(), cmux.read_text())
+        self.run_script("link.sh")
+        self.assertEqual(ghostty.resolve(), (self.repo / "ghostty/config").resolve())
+        self.assertEqual(
+            (self.home / ".config/cmux/cmux.json").resolve(),
+            (self.repo / "cmux/cmux.json").resolve(),
+        )
+
+    def test_herdr_config_path_override(self):
+        config = self.home / "custom/herdr.toml"
+        config.parent.mkdir()
+        config.write_text("custom Herdr settings")
+        self.env["HERDR_CONFIG_PATH"] = str(config)
+        self.run_script("capture.sh", "--force", "--no-extras")
+        self.assertEqual((self.repo / "herdr/config.toml").read_text(), config.read_text())
+        self.run_script("link.sh")
+        self.assertEqual(config.resolve(), (self.repo / "herdr/config.toml").resolve())
+        self.assertFalse((self.home / ".config/herdr").exists())
+
     def test_link_preserves_files_directories_and_broken_symlinks(self):
         (self.home / ".zshrc").write_text("custom")
         (self.home / ".config/nvim").mkdir(parents=True)
         (self.home / ".config/nvim/init.lua").write_text("custom nvim")
         (self.home / ".tmux.conf").symlink_to("missing")
-        self.run_script("link.sh")
+        self.run_script("link.sh", "--with-tmux")
         self.assertEqual(next(self.home.glob(".zshrc.bak.*")).read_text(), "custom")
         backup = next((self.home / ".config").glob("nvim.bak.*"))
         self.assertEqual((backup / "init.lua").read_text(), "custom nvim")
@@ -141,10 +221,10 @@ class ScriptTests(unittest.TestCase):
         self.assertEqual(outside.read_text(), "keep")
 
     def test_extras_respect_no_desktop(self):
-        for name in ["ghostty", "hypr"]:
+        for name in ["kitty", "hypr"]:
             (self.repo / "extras/config" / name).mkdir(parents=True)
         self.run_script("link-extras.sh", "--no-desktop")
-        self.assertTrue((self.home / ".config/ghostty").is_symlink())
+        self.assertTrue((self.home / ".config/kitty").is_symlink())
         self.assertFalse((self.home / ".config/hypr").exists())
         before = snapshot(self.root)
         self.run_script("link-extras.sh", "--no-desktop")
@@ -223,7 +303,7 @@ class ScriptTests(unittest.TestCase):
         commands = {
             "uname": "echo Darwin",
             "xcode-select": "exit 0",
-            "brew": "exit 0",
+            "brew": 'printf "%s\\n" "$*" >> "$BREW_LOG"',
             "bun": "exit 0",
             "pnpm": "exit 0",
             "bob": (
@@ -242,12 +322,21 @@ class ScriptTests(unittest.TestCase):
             PATH=str(bin_dir),
             SHELL="/bin/zsh",
             TEST_LOG=str(self.root / "bob.log"),
+            BREW_LOG=str(self.root / "brew.log"),
         )
 
     def test_bootstrap_selects_neovim_on_fresh_mac(self):
         self.prepare_bootstrap()
         self.run_script("bootstrap-macos.sh")
         self.assertEqual((self.root / "bob.log").read_text(), "use stable\n")
+        self.assertNotIn("Brewfile.tmux", (self.root / "brew.log").read_text())
+        self.assertFalse((self.home / ".tmux.conf").exists())
+
+    def test_bootstrap_installs_optional_tmux_bundle(self):
+        self.prepare_bootstrap()
+        self.run_script("bootstrap-macos.sh", "--with-tmux")
+        self.assertIn("Brewfile.tmux", (self.root / "brew.log").read_text())
+        self.assertTrue((self.home / ".tmux.conf").is_symlink())
 
     def test_bootstrap_preserves_existing_bob_neovim(self):
         self.prepare_bootstrap()

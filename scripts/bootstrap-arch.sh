@@ -13,6 +13,16 @@ error() { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
 
 DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+WITH_TMUX=0
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --with-tmux) WITH_TMUX=1 ;;
+        -h|--help) echo "Usage: $(basename "$0") [--with-tmux]"; exit 0 ;;
+        *) error "Unknown argument: $1" ;;
+    esac
+    shift
+done
+
 info "Starting dotfiles bootstrap for Arch Linux..."
 info "Dotfiles directory: $DOTFILES_DIR"
 
@@ -48,7 +58,7 @@ fi
 info "Installing packages from pacman..."
 sudo pacman -S --needed --noconfirm \
     zsh \
-    tmux \
+    ghostty \
     neovim \
     git \
     git-lfs \
@@ -77,8 +87,17 @@ info "Installing packages from AUR..."
 "$AUR_HELPER" -S --needed --noconfirm \
     fnm-bin \
     zsh-antidote \
-    1password-cli \
-    sesh-bin || warn "Some AUR packages may have failed"
+    1password-cli || warn "Some AUR packages may have failed"
+
+if [[ "$WITH_TMUX" -eq 1 ]]; then
+    sudo pacman -S --needed --noconfirm tmux
+    "$AUR_HELPER" -S --needed --noconfirm sesh-bin
+fi
+
+if ! command -v herdr >/dev/null 2>&1 && [[ ! -x "$HOME/.local/bin/herdr" ]]; then
+    info "Installing Herdr..."
+    curl -fsSL https://herdr.dev/install.sh | sh
+fi
 
 # Set zsh as default shell
 if [[ "$SHELL" != */zsh ]]; then
@@ -102,10 +121,14 @@ mkdir -p ~/.local/share/pnpm
 mkdir -p ~/.cache/oh-my-zsh/completions
 
 # Use the same backup and linking rules as a manual install.
-bash "$DOTFILES_DIR/scripts/link.sh"
+if [[ "$WITH_TMUX" -eq 1 ]]; then
+    bash "$DOTFILES_DIR/scripts/link.sh" --with-tmux
+else
+    bash "$DOTFILES_DIR/scripts/link.sh"
+fi
 
 # Install tmux plugin manager
-if [[ ! -d ~/.tmux/plugins/tpm ]]; then
+if [[ "$WITH_TMUX" -eq 1 && ! -d ~/.tmux/plugins/tpm ]]; then
     info "Installing tmux plugin manager (TPM)..."
     git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
 fi
@@ -133,7 +156,10 @@ info "=========================================="
 echo ""
 info "Next steps:"
 echo "  1. Log out and log back in (for zsh and docker group)"
-echo "  2. Open tmux and press 'prefix + I' to install tmux plugins"
+echo "  2. Open Ghostty, then run herdr for persistent workspaces"
+if [[ "$WITH_TMUX" -eq 1 ]]; then
+    echo "     Optional tmux: press 'prefix + I' to install plugins"
+fi
 echo "  3. Open nvim - plugins will auto-install via lazy.nvim"
 echo "  4. Run 'fnm install --lts' to install Node.js"
 echo "  5. Run 'pyenv install 3.12' to install Python"
