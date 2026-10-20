@@ -13,7 +13,7 @@ Cross-platform dotfiles for macOS and Arch Linux.
 - **starship** - Cross-shell prompt with Nerd Font icons
 - **git** - Global git configuration
 - **Developer tools** - Coding CLIs from `update_dependencies.sh`, plus Node and uv
-- **Brewfile** - Default Homebrew packages (macOS only)
+- **Brewfile** - Core Homebrew packages, with separate optional extras (macOS only)
 
 ## Quick start (macOS)
 
@@ -25,6 +25,24 @@ git clone https://github.com/ferjgm98/dotfiles.git ~/dotfiles
 chmod +x ~/dotfiles/scripts/bootstrap-macos.sh
 ~/dotfiles/scripts/bootstrap-macos.sh
 ```
+
+## macOS packages
+
+The default `Brewfile` installs shell and Neovim dependencies, GitHub CLI and
+Git LFS, fnm, pyenv, uv, Ghostty, cmux, Herdr, 1Password CLI, and Nerd Fonts.
+The coding-tool installer described below still runs by default.
+
+`Brewfile.extras` contains optional databases, Java runtimes, PHP and mobile
+tooling, additional editors, utilities, and desktop apps. Review it and remove
+entries you do not want before installing:
+
+```bash
+brew bundle install --file="$HOME/dotfiles/Brewfile.extras"
+```
+
+Bootstrap does not install this extra bundle. Its database entries do not
+request service startup or restarts. Tmux remains separate in `Brewfile.tmux`.
+Changing these manifests does not uninstall anything already on a machine.
 
 ## Quick start (Arch Linux)
 
@@ -270,14 +288,14 @@ Avoid committing anything that can compromise accounts or machines:
 - neovim + lazy.nvim
 - starship (prompt)
 - fzf, fd, bat, eza, zoxide, ripgrep
+- fnm, pyenv, and uv
+- 1Password CLI on macOS
 
 ### Optional
 
 - tmux + TPM + sesh, via `--with-tmux`
-- fnm (Node.js version manager)
-- pyenv (Python version manager)
-- 1password-cli (secrets management)
-- docker
+- Extra macOS packages in `Brewfile.extras`, installed separately
+- Docker through OrbStack in the optional macOS bundle
 
 The macOS bootstrap selects stable Neovim with Bob when no Neovim installation
 is present. GitHub CLI is installed on both platforms, and Git resolves it through
@@ -337,7 +355,8 @@ dotfiles/
 │   ├── bootstrap-macos.sh
 │   ├── install-dev-tools.sh
 │   └── link.sh
-├── Brewfile            # Default Homebrew packages (macOS)
+├── Brewfile            # Core Homebrew packages (macOS)
+├── Brewfile.extras     # Optional tools and apps
 ├── Brewfile.tmux       # Optional tmux and sesh
 ├── .gitconfig
 └── README.md
@@ -346,7 +365,10 @@ dotfiles/
 ## Updating Brewfile
 
 Dump installed packages to a separate file and review the additions before
-editing the tracked Brewfiles. Keep tmux and sesh in `Brewfile.tmux`:
+editing the tracked Brewfiles. Installed packages are not automatically core
+requirements: keep project-specific tools in `Brewfile.extras` and tmux/sesh in
+`Brewfile.tmux`. Do not use `brew bundle cleanup` against the core file; it
+would treat separately installed tools as unwanted.
 
 ```bash
 brew bundle dump --file=/tmp/Brewfile.installed --force
